@@ -1,0 +1,118 @@
+{
+  "info": {
+    "name": "Gateway Service - Bai tap 2",
+    "description": "Chay theo thu tu: 1 -> 5. Can bat identity-service (8081), course-service (8082), gateway-service (8080).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "gatewayUrl", "value": "http://localhost:8080" },
+    { "key": "accessToken", "value": "" },
+    {
+      "key": "expiredToken",
+      "value": "eyJhbGciOiJIUzI1NiJ9.eyJqdGkiOiIwYjZmN2MxZS1leHBpcmVkLWRlbW8iLCJzdWIiOiJzdHVkZW50MDEiLCJyb2xlIjoiU1RVREVOVCIsImlhdCI6MTc1OTYwMDAwMCwiZXhwIjoxNzU5NjAwOTAwfQ.t9L3p3Dl6Ed6whFq9KINH0JhBPD0UKrkuVuBd9b9rcg"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Login qua Gateway (public path)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.collectionVariables.set('accessToken', pm.response.json().accessToken);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"username\": \"student01\",\n  \"password\": \"123456\"\n}" },
+        "url": "{{gatewayUrl}}/api/auth/login"
+      }
+    },
+    {
+      "name": "2. GET courses - KHONG token (401)",
+      "event": [
+        {
+          "listen": "test",
+          "script": { "type": "text/javascript", "exec": ["pm.test('Gateway chặn: 401', () => pm.response.to.have.status(401));"] }
+        }
+      ],
+      "request": { "method": "GET", "header": [], "url": "{{gatewayUrl}}/api/courses" }
+    },
+    {
+      "name": "3. GET courses - token HET HAN (401)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Gateway chặn: 401', () => pm.response.to.have.status(401));",
+              "pm.test('Báo hết hạn', () => pm.expect(pm.response.json().message).to.include('hết hạn'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{expiredToken}}" }],
+        "url": "{{gatewayUrl}}/api/courses"
+      }
+    },
+    {
+      "name": "4. GET courses - token SAI CHU KY (401)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// Đổi ký tự cuối của chữ ký để làm hỏng signature",
+              "const t = pm.collectionVariables.get('accessToken') || 'a.b.c';",
+              "const last = t.slice(-1) === 'A' ? 'B' : 'A';",
+              "pm.variables.set('tamperedToken', t.slice(0, -1) + last);"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": { "type": "text/javascript", "exec": ["pm.test('Gateway chặn: 401', () => pm.response.to.have.status(401));"] }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{tamperedToken}}" }],
+        "url": "{{gatewayUrl}}/api/courses"
+      }
+    },
+    {
+      "name": "5. GET courses - token HOP LE (200 + X-User-Role)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// Header giả mạo ADMIN không có quyền GET (Bài 3) -> nếu Gateway không ghi đè sẽ nhận 403",
+              "pm.test('Status 200: Gateway đã ghi đè X-User-Role = STUDENT', () => pm.response.to.have.status(200));",
+              "pm.test('Trả về danh sách khóa học', () => pm.expect(pm.response.json()).to.be.an('array').that.is.not.empty);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+          { "key": "X-User-Role", "value": "ADMIN", "description": "Header giả mạo - Gateway phải ghi đè" }
+        ],
+        "url": "{{gatewayUrl}}/api/courses"
+      }
+    }
+  ]
+}

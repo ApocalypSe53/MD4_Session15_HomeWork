@@ -1,0 +1,69 @@
+{
+  "info": {
+    "name": "Identity Service - Bai tap 1",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8081" },
+    { "key": "accessToken", "value": "" },
+    { "key": "refreshToken", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Login - STUDENT",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.collectionVariables.set('accessToken', body.accessToken);",
+              "pm.collectionVariables.set('refreshToken', body.refreshToken);",
+              "const payload = JSON.parse(atob(body.accessToken.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));",
+              "console.log('JWT payload', payload);",
+              "pm.test('Payload có sub, role, jti', () => {",
+              "  pm.expect(payload.sub).to.eql('student01');",
+              "  pm.expect(payload.role).to.eql('STUDENT');",
+              "  pm.expect(payload.jti).to.be.a('string').and.not.empty;",
+              "});",
+              "pm.test('Access token sống 15 phút', () => pm.expect(payload.exp - payload.iat).to.eql(900));",
+              "pm.test('Có refresh token', () => pm.expect(body.refreshToken).to.be.a('string').and.not.empty);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"username\": \"student01\",\n  \"password\": \"123456\"\n}" },
+        "url": "{{baseUrl}}/api/auth/login"
+      }
+    },
+    {
+      "name": "Login - INSTRUCTOR",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"username\": \"instructor01\",\n  \"password\": \"123456\"\n}" },
+        "url": "{{baseUrl}}/api/auth/login"
+      }
+    },
+    {
+      "name": "Login - sai mat khau (401)",
+      "event": [
+        {
+          "listen": "test",
+          "script": { "type": "text/javascript", "exec": ["pm.test('Status 401', () => pm.response.to.have.status(401));"] }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"username\": \"student01\",\n  \"password\": \"wrong\"\n}" },
+        "url": "{{baseUrl}}/api/auth/login"
+      }
+    }
+  ]
+}

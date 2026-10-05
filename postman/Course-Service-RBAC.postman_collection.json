@@ -1,0 +1,132 @@
+{
+  "info": {
+    "name": "Course Service RBAC - Bai tap 3",
+    "description": "Chay theo thu tu. Can bat identity-service (8081), course-service (8082), gateway-service (8080). Moi request di qua Gateway.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "gatewayUrl", "value": "http://localhost:8080" },
+    { "key": "studentToken", "value": "" },
+    { "key": "instructorToken", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Login STUDENT",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.collectionVariables.set('studentToken', pm.response.json().accessToken);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"username\": \"student01\",\n  \"password\": \"123456\"\n}" },
+        "url": "{{gatewayUrl}}/api/auth/login"
+      }
+    },
+    {
+      "name": "2. Login INSTRUCTOR",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.collectionVariables.set('instructorToken', pm.response.json().accessToken);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"username\": \"instructor01\",\n  \"password\": \"123456\"\n}" },
+        "url": "{{gatewayUrl}}/api/auth/login"
+      }
+    },
+    {
+      "name": "3. STUDENT - GET courses (200)",
+      "event": [
+        {
+          "listen": "test",
+          "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }],
+        "url": "{{gatewayUrl}}/api/courses"
+      }
+    },
+    {
+      "name": "4. STUDENT - POST course (403)",
+      "event": [
+        {
+          "listen": "test",
+          "script": { "type": "text/javascript", "exec": ["pm.test('Status 403', () => pm.response.to.have.status(403));"] }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{studentToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": { "mode": "raw", "raw": "{\n  \"title\": \"Docker cơ bản\",\n  \"description\": \"Container hoá ứng dụng\"\n}" },
+        "url": "{{gatewayUrl}}/api/courses"
+      }
+    },
+    {
+      "name": "5. INSTRUCTOR - POST course (201)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 201', () => pm.response.to.have.status(201));",
+              "pm.test('Có id', () => pm.expect(pm.response.json().id).to.be.a('number'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{instructorToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": { "mode": "raw", "raw": "{\n  \"title\": \"Docker cơ bản\",\n  \"description\": \"Container hoá ứng dụng\"\n}" },
+        "url": "{{gatewayUrl}}/api/courses"
+      }
+    },
+    {
+      "name": "6. INSTRUCTOR - GET courses (200, thấy khóa mới)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Có khóa vừa tạo', () => pm.expect(pm.response.json().map(c => c.title)).to.include('Docker cơ bản'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{instructorToken}}" }],
+        "url": "{{gatewayUrl}}/api/courses"
+      }
+    }
+  ]
+}

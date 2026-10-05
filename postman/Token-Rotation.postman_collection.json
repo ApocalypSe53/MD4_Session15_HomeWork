@@ -1,0 +1,101 @@
+{
+  "info": {
+    "name": "Token Rotation - Bai tap 4",
+    "description": "Chay theo thu tu 1 -> 4. Goi qua Gateway (8080) hoac doi baseUrl = http://localhost:8081 de goi thang Identity Service.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "oldRefreshToken", "value": "" },
+    { "key": "newRefreshToken", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Login - lay cap token",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.collectionVariables.set('oldRefreshToken', pm.response.json().refreshToken);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"username\": \"student01\",\n  \"password\": \"123456\"\n}" },
+        "url": "{{baseUrl}}/api/auth/login"
+      }
+    },
+    {
+      "name": "2. Refresh - doi lay cap token moi (200)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('Có Access Token mới', () => pm.expect(body.accessToken).to.be.a('string').and.not.empty);",
+              "pm.test('Refresh Token mới khác token cũ', () =>",
+              "  pm.expect(body.refreshToken).to.not.eql(pm.collectionVariables.get('oldRefreshToken')));",
+              "pm.collectionVariables.set('newRefreshToken', body.refreshToken);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{oldRefreshToken}}\"\n}" },
+        "url": "{{baseUrl}}/api/auth/refresh"
+      }
+    },
+    {
+      "name": "3. Refresh lai bang token CU (403)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 403 - token đã bị xoay vòng', () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{oldRefreshToken}}\"\n}" },
+        "url": "{{baseUrl}}/api/auth/refresh"
+      }
+    },
+    {
+      "name": "4. Refresh bang token MOI sau khi bi reuse (403)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// Reuse detection: khi token cũ bị dùng lại, mọi token còn hiệu lực của user cũng bị thu hồi",
+              "pm.test('Status 403 - đã bị thu hồi do phát hiện reuse', () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{newRefreshToken}}\"\n}" },
+        "url": "{{baseUrl}}/api/auth/refresh"
+      }
+    }
+  ]
+}

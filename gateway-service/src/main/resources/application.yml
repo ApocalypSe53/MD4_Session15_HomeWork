@@ -1,0 +1,24 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: gateway-service
+  cloud:
+    gateway:
+      routes:
+        - id: course-service
+          uri: ${COURSE_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/courses/**
+        - id: identity-service
+          uri: ${IDENTITY_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/auth/**
+
+jwt:
+  # PHẢI giống hệt jwt.secret của Identity Service
+  secret: ${JWT_SECRET:dGhpcy1pcy1hLXZlcnktc2VjcmV0LWtleS1mb3ItaWRlbnRpdHktc2VydmljZS1oczI1Ng==}
+  # Các path không cần token (đi thẳng qua Gateway)
+  public-paths:
+    - /api/auth/**
